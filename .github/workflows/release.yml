@@ -25,29 +25,17 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore FatimaTTSFish/FatimaTTSFish.csproj
 
-      - name: Build & Publish (self-contained exe)
-        run: |
-          dotnet publish FatimaTTSFish/FatimaTTSFish.csproj `
-            -c Release `
-            -r win-x64 `
-            --self-contained true `
-            -p:PublishSingleFile=true `
-            -p:IncludeNativeLibrariesForSelfExtract=true `
-            -p:EnableCompressionInSingleFile=true `
-            -o publish/
+      - name: Build (sanity check before tagging a release)
+        run: dotnet build FatimaTTSFish/FatimaTTSFish.csproj -c Release --no-restore
 
-      - name: Rename output
-        run: |
-          $tag = "${{ github.ref_name }}"
-          Rename-Item publish\FatimaTTSFish.exe "FatimaTTSFish-$tag-win-x64.exe"
-
+      # No portable .exe is published — the MSI installer (built locally via
+      # installer/build-installer.ps1, since installer/ is gitignored) is
+      # the only supported distribution and is uploaded to this release by hand.
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "Fatima TTS (Fish) ${{ github.ref_name }}"
           body_path: CHANGELOG.md
-          files: |
-            publish/FatimaTTSFish-${{ github.ref_name }}-win-x64.exe
           draft: false
           prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
         env:

@@ -41,9 +41,15 @@
                 </Grid>
             </Border>
 
+            <!-- Scrollable body — text input + progress/chunks/playback all need to
+                 stay reachable on short windows, so nothing below is Dock="Top"
+                 directly on the outer DockPanel anymore. -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+
             <!-- Text input card -->
-            <Border DockPanel.Dock="Top"
-                    Margin="24,20,16,0"
+            <Border Margin="24,20,16,0"
                     Style="{StaticResource CardStyle}"
                     Padding="0">
                 <DockPanel>
@@ -127,8 +133,7 @@
 
             <!-- Progress / status area (hidden until job runs) -->
             <Border x:Name="ProgressPanel"
-                    DockPanel.Dock="Top"
-                    Margin="24,12,16,0"
+                    Margin="24,12,16,24"
                     Style="{StaticResource CardStyle}"
                     Visibility="Collapsed">
                 <StackPanel>
@@ -329,6 +334,9 @@
                     </Border>
                 </StackPanel>
             </Border>
+
+            </StackPanel>
+            </ScrollViewer>
 
         </DockPanel>
 
