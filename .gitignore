@@ -1,0 +1,28 @@
+## .NET / C#
+bin/
+obj/
+*.user
+*.suo
+.vs/
+publish/
+*.nupkg
+
+## Build artifacts
+dist/
+
+## Installer / WiX setup
+installer/
+
+## OS
+Thumbs.db
+.DS_Store
+desktop.ini
+
+## Secrets — never commit these
+appsettings.Development.json
+*.pfx
+*.p12
+
+## Local Claude Code tooling — not part of the project
+CLAUDE.md
+.claude/

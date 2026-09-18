@@ -1,0 +1,15 @@
+# Changelog
+
+## 1.0.0 — Initial release
+
+New fork of [Fatima TTS](https://github.com/hassanxs/fatima-tts), rebuilt against [Fish.audio](https://fish.audio) instead of Inworld. Independent product — own data folder, own credential storage, own installer identity.
+
+- **Generate Speech** — streaming synthesis against Fish's `s2.1-pro`, `s2-pro`, `s1`, `s2.1-pro-free`, and `drama-3-preview` models, with per-chunk retry and resume
+- **Batch Generate** — CSV/TXT batch jobs, sequential file naming, optional FFmpeg merge
+- **My Jobs** — job history, waveform player, resume interrupted jobs
+- **Dashboard** — usage stats, 14-day byte-billed chart
+- **My Voices** — lists your own Fish.audio voice models (`GET /model?self=true`) as a picker for Reference ID
+- **Voice Library search** — searches Fish's public catalog (`GET /model?self=false&title=...`)
+- **Voice Cloning** — clone a persistent voice model from audio samples (`POST /model`, multipart)
+- Billing switched from character count to UTF-8 byte count, matching Fish's actual pricing unit
+- No Voice Design, no SRT/caption export (Fish's TTS API returns no timestamp data) — may follow once verified

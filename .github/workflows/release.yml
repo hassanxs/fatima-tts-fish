@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'          # triggers on v1.0.0, v1.2.3, etc.
+  workflow_dispatch:       # manual trigger from GitHub UI
+
+permissions:
+  contents: write          # needed to create GitHub Releases
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore FatimaTTSFish/FatimaTTSFish.csproj
+
+      - name: Build & Publish (self-contained exe)
+        run: |
+          dotnet publish FatimaTTSFish/FatimaTTSFish.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            -o publish/
+
+      - name: Rename output
+        run: |
+          $tag = "${{ github.ref_name }}"
+          Rename-Item publish\FatimaTTSFish.exe "FatimaTTSFish-$tag-win-x64.exe"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Fatima TTS (Fish) ${{ github.ref_name }}"
+          body_path: CHANGELOG.md
+          files: |
+            publish/FatimaTTSFish-${{ github.ref_name }}-win-x64.exe
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
