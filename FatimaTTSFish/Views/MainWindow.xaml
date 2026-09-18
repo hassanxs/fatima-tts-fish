@@ -9,6 +9,50 @@
         Background="{DynamicResource BgAppBrush}"
         FontFamily="Segoe UI">
 
+    <DockPanel>
+
+        <!-- ═══ UPDATE BANNER (hidden unless a newer release is found) ═══ -->
+        <Border x:Name="UpdateBanner"
+                DockPanel.Dock="Top"
+                Visibility="Collapsed"
+                Background="{DynamicResource AccentBrush}"
+                Padding="16,8">
+            <StackPanel>
+                <Grid>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="✦" FontSize="13" Foreground="White" Margin="0,0,8,0"/>
+                        <TextBlock x:Name="UpdateBannerText"
+                                   Text="A new version is available"
+                                   FontSize="12" FontWeight="SemiBold"
+                                   Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel x:Name="UpdateBannerActions"
+                                Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="UpdateBannerDownloadButton"
+                                Click="UpdateBannerDownload_Click"
+                                Background="White" BorderThickness="0"
+                                Padding="12,4" Margin="0,0,8,0" Cursor="Hand">
+                            <TextBlock Text="Update Now" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AccentBrush}"/>
+                        </Button>
+                        <Button Click="UpdateBannerDismiss_Click"
+                                Background="Transparent" BorderThickness="0"
+                                Foreground="White" Cursor="Hand" Padding="6,4">
+                            <TextBlock Text="✕" FontSize="11"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+                <ProgressBar x:Name="UpdateBannerProgress"
+                             Visibility="Collapsed"
+                             Height="4" Minimum="0" Maximum="100"
+                             Foreground="White"
+                             Background="#40FFFFFF"
+                             BorderThickness="0"
+                             HorizontalAlignment="Stretch"
+                             Margin="0,6,0,0"/>
+            </StackPanel>
+        </Border>
+
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="210"/>
@@ -256,4 +300,5 @@
                Background="{DynamicResource BgContentBrush}"/>
 
     </Grid>
+    </DockPanel>
 </Window>

@@ -209,6 +209,8 @@
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0"
                                                                Text="{Binding Id}"
@@ -224,7 +226,60 @@
                                                             ToolTip="Copy Reference ID">
                                                         <TextBlock Text="⧉" FontSize="12"/>
                                                     </Button>
+                                                    <Button Grid.Column="2"
+                                                            Style="{StaticResource IconButtonStyle}"
+                                                            Width="24" Height="24"
+                                                            Tag="{Binding Id}"
+                                                            Click="EditVoice_Click"
+                                                            ToolTip="Rename / change visibility">
+                                                        <TextBlock Text="✎" FontSize="12"/>
+                                                    </Button>
+                                                    <Button Grid.Column="3"
+                                                            Style="{StaticResource IconButtonStyle}"
+                                                            Width="24" Height="24"
+                                                            Tag="{Binding Id}"
+                                                            Click="DeleteVoice_Click"
+                                                            Foreground="{DynamicResource DangerBrush}"
+                                                            ToolTip="Delete voice">
+                                                        <TextBlock Text="✕" FontSize="11"/>
+                                                    </Button>
                                                 </Grid>
+
+                                                <!-- Inline edit panel -->
+                                                <StackPanel Visibility="{Binding EditPanelVisibility}"
+                                                            Margin="0,10,0,0">
+                                                    <Border Height="1"
+                                                            Background="{DynamicResource BorderSubtleBrush}"
+                                                            Margin="0,0,0,10"/>
+                                                    <TextBlock Text="Title" FontSize="11"
+                                                               Foreground="{DynamicResource TextMutedBrush}"
+                                                               Margin="0,0,0,4"/>
+                                                    <TextBox Text="{Binding EditTitle, UpdateSourceTrigger=PropertyChanged}"
+                                                             Style="{StaticResource InputStyle}"
+                                                             Height="30" Margin="0,0,0,8"/>
+                                                    <TextBlock Text="Visibility" FontSize="11"
+                                                               Foreground="{DynamicResource TextMutedBrush}"
+                                                               Margin="0,0,0,4"/>
+                                                    <ComboBox Style="{StaticResource ComboStyle}"
+                                                              Height="30" Margin="0,0,0,10"
+                                                              SelectedIndex="{Binding EditVisibilityIndex, Mode=TwoWay}">
+                                                        <ComboBoxItem Content="Private — only you"/>
+                                                        <ComboBoxItem Content="Unlisted — anyone with the link"/>
+                                                    </ComboBox>
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                        <Button Content="Cancel"
+                                                                Style="{StaticResource SecondaryButtonStyle}"
+                                                                Height="28" Padding="10,0" FontSize="11"
+                                                                Tag="{Binding Id}"
+                                                                Click="CancelEditVoice_Click"
+                                                                Margin="0,0,8,0"/>
+                                                        <Button Content="Save"
+                                                                Style="{StaticResource CtaButtonStyle}"
+                                                                Height="28" Padding="10,0" FontSize="11"
+                                                                Tag="{Binding Id}"
+                                                                Click="SaveEditVoice_Click"/>
+                                                    </StackPanel>
+                                                </StackPanel>
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>

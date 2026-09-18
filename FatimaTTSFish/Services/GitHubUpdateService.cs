@@ -1,4 +1,6 @@
+using System.IO;
 using System.Net.Http;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -10,10 +12,15 @@ namespace FatimaTTS.Services;
 /// </summary>
 public class GitHubUpdateService
 {
-    // ── Config — update these before publishing ───────────────────────────
-    public const string GitHubOwner    = "hassanxs";
-    public const string GitHubRepo     = "fatima-tts-fish";
-    public const string CurrentVersion = "1.0.0";
+    // ── Config ──────────────────────────────────────────────────────────
+    public const string GitHubOwner = "hassanxs";
+    public const string GitHubRepo  = "fatima-tts-fish";
+
+    // Read from the running assembly rather than hand-maintained — a
+    // hardcoded literal here silently drifts from the real app version
+    // (it did once already: stuck at 1.0.0 through the 1.0.1 release).
+    public static readonly string CurrentVersion = ReadAssemblyVersion();
+
     public static readonly string ReleasesUrl =
         $"https://github.com/{GitHubOwner}/{GitHubRepo}/releases";
     public static readonly string LatestApiUrl =
@@ -29,7 +36,14 @@ public class GitHubUpdateService
         _http = new HttpClient();
         // GitHub API requires a User-Agent header
         _http.DefaultRequestHeaders.UserAgent.ParseAdd($"FatimaTTSFish/{CurrentVersion}");
-        _http.Timeout = TimeSpan.FromSeconds(10);
+        // Long enough to cover downloading the ~55MB installer, not just the API check.
+        _http.Timeout = TimeSpan.FromMinutes(5);
+    }
+
+    private static string ReadAssemblyVersion()
+    {
+        var v = Assembly.GetExecutingAssembly().GetName().Version;
+        return v is null ? "0.0.0" : $"{v.Major}.{v.Minor}.{v.Build}";
     }
 
     /// <summary>
@@ -57,18 +71,18 @@ public class GitHubUpdateService
             if (!IsNewer(latestVersion, CurrentVersion))
                 return null;
 
-            // Find the .exe asset
-            var exeAsset = release.Assets?.FirstOrDefault(a =>
-                a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
+            // The MSI installer is the only distributed asset (no portable exe since v1.0.1)
+            var msiAsset = release.Assets?.FirstOrDefault(a =>
+                a.Name.EndsWith(".msi", StringComparison.OrdinalIgnoreCase));
 
             return new UpdateInfo
             {
-                Version      = latestVersion,
-                ReleaseNotes = release.Body ?? "",
-                PublishedAt  = release.PublishedAt,
-                DownloadUrl  = exeAsset?.BrowserDownloadUrl ?? ReleasesUrl,
-                ReleasesUrl  = ReleasesUrl,
-                IsExeAvailable = exeAsset is not null
+                Version           = latestVersion,
+                ReleaseNotes      = release.Body ?? "",
+                PublishedAt       = release.PublishedAt,
+                DownloadUrl       = msiAsset?.BrowserDownloadUrl ?? ReleasesUrl,
+                ReleasesUrl       = ReleasesUrl,
+                IsInstallerAvailable = msiAsset is not null
             };
         }
         catch (OperationCanceledException) { return null; }
@@ -77,6 +91,38 @@ public class GitHubUpdateService
             _log.Error("Update check failed", ex);
             return null;
         }
+    }
+
+    /// <summary>
+    /// Downloads the update's MSI installer to a temp file, reporting 0–100
+    /// progress. Caller is responsible for launching it and for cleanup.
+    /// </summary>
+    public async Task<string> DownloadInstallerAsync(
+        string downloadUrl, IProgress<int>? progress, CancellationToken ct = default)
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), $"FatimaTTSFish-update-{Guid.NewGuid():N}.msi");
+
+        using var response = await _http.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+
+        var totalBytes = response.Content.Headers.ContentLength ?? -1L;
+        await using var contentStream = await response.Content.ReadAsStreamAsync(ct);
+        await using var fileStream = new FileStream(
+            tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+
+        var buffer     = new byte[81920];
+        long totalRead = 0;
+        int  read;
+        while ((read = await contentStream.ReadAsync(buffer, ct)) > 0)
+        {
+            await fileStream.WriteAsync(buffer.AsMemory(0, read), ct);
+            totalRead += read;
+            if (totalBytes > 0)
+                progress?.Report((int)(totalRead * 100 / totalBytes));
+        }
+
+        _log.Info($"Downloaded update installer to {tempPath} ({totalRead:N0} bytes)");
+        return tempPath;
     }
 
     /// <summary>
@@ -103,7 +149,7 @@ public record UpdateInfo
     public DateTime PublishedAt   { get; init; }
     public string   DownloadUrl   { get; init; } = "";
     public string   ReleasesUrl   { get; init; } = "";
-    public bool     IsExeAvailable { get; init; }
+    public bool     IsInstallerAvailable { get; init; }
 }
 
 file class GitHubRelease

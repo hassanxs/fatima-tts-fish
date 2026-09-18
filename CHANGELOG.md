@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.2
+
+- **Voice management** — rename, change visibility (private/unlisted), and delete voices directly from the Clone Voice page's "Your Voices" list (`PATCH`/`DELETE /model/{id}`)
+- **In-app auto-update** — a banner (and an About page checker) detects newer GitHub releases, downloads the MSI with a progress bar, and launches the installer for you — no more manual trip to GitHub
+- Fix: a manually-typed Job Title on Generate Speech could get silently discarded in favor of an auto-suggested one if you edited the title after pasting body text (stale-flag bug)
+- Fix: `UpdateVoiceAsync` crashed on Fish's empty-body success response instead of treating it as a successful rename/visibility change
+- README: added a screenshot and a "Download Latest Release" badge
+
 ## 1.0.1
 
 - Fix: Generate Speech page's progress/chunk list/playback controls could be clipped off-screen on short or small windows — the center content area now scrolls

@@ -80,19 +80,8 @@ public class FishTtsService
 
         if (!response.IsSuccessStatusCode)
         {
-            var body   = await response.Content.ReadAsStringAsync(ct);
-            var status = (int)response.StatusCode;
-            string msg;
-            try
-            {
-                var err = JsonSerializer.Deserialize<FishApiError>(body, JsonOpts);
-                msg = FishApiException.FriendlyMessage(status, err?.Message ?? err?.Error ?? err?.Detail ?? body);
-            }
-            catch
-            {
-                msg = FishApiException.FriendlyMessage(status, body);
-            }
-            throw new FishApiException(msg, status);
+            var body = await response.Content.ReadAsStringAsync(ct);
+            throw BuildApiException(response, body);
         }
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
@@ -160,20 +149,7 @@ public class FishTtsService
         var body     = await response.Content.ReadAsStringAsync(ct);
 
         if (!response.IsSuccessStatusCode)
-        {
-            var status = (int)response.StatusCode;
-            string msg;
-            try
-            {
-                var err = JsonSerializer.Deserialize<FishApiError>(body, JsonOpts);
-                msg = FishApiException.FriendlyMessage(status, err?.Message ?? err?.Error ?? err?.Detail ?? body);
-            }
-            catch
-            {
-                msg = FishApiException.FriendlyMessage(status, body);
-            }
-            throw new FishApiException(msg, status);
-        }
+            throw BuildApiException(response, body);
 
         return ParseVoiceListResponse(body);
     }
@@ -273,20 +249,7 @@ public class FishTtsService
         var body      = await response.Content.ReadAsStringAsync(ct);
 
         if (!response.IsSuccessStatusCode)
-        {
-            var status = (int)response.StatusCode;
-            string msg;
-            try
-            {
-                var err = JsonSerializer.Deserialize<FishApiError>(body, JsonOpts);
-                msg = FishApiException.FriendlyMessage(status, err?.Message ?? err?.Error ?? err?.Detail ?? body);
-            }
-            catch
-            {
-                msg = FishApiException.FriendlyMessage(status, body);
-            }
-            throw new FishApiException(msg, status);
-        }
+            throw BuildApiException(response, body);
 
         using var doc = JsonDocument.Parse(body);
         var root  = doc.RootElement;
@@ -303,6 +266,86 @@ public class FishTtsService
             State      = state,
             Visibility = FirstStringProperty(root, "visibility") ?? visibility,
         };
+    }
+
+    /// <summary>
+    /// Renames, re-tags, or changes visibility on an existing voice model
+    /// (PATCH /model/{id} — confirmed live endpoint, see docs.fish.audio
+    /// "Manage Voices"). Only the fields passed change; omit a parameter to
+    /// leave it as-is. <paramref name="visibility"/> "public" is silently
+    /// downgraded to "private" by Fish's own API — same caveat as CloneVoiceAsync.
+    /// </summary>
+    public async Task<FishVoice> UpdateVoiceAsync(
+        string apiKey,
+        string voiceId,
+        string? title = null,
+        string? description = null,
+        string? visibility = null,
+        CancellationToken ct = default)
+    {
+        var fields = new Dictionary<string, object>();
+        if (title is not null)       fields["title"]       = title;
+        if (description is not null) fields["description"] = description;
+        if (visibility is not null)  fields["visibility"]  = visibility;
+
+        var json    = JsonSerializer.Serialize(fields, JsonOpts);
+        var request = new HttpRequestMessage(HttpMethod.Patch, $"{BaseUrl}/model/{Uri.EscapeDataString(voiceId)}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await _http.SendAsync(request, ct);
+        var body     = await response.Content.ReadAsStringAsync(ct);
+
+        if (!response.IsSuccessStatusCode)
+            throw BuildApiException(response, body);
+
+        // Some successful PATCH responses come back with an empty body (e.g. 204
+        // No Content) — fall back to what we already know we asked for rather
+        // than trying to parse zero bytes as JSON.
+        if (string.IsNullOrWhiteSpace(body))
+            return new FishVoice { Id = voiceId, Title = title ?? "", Visibility = visibility };
+
+        using var doc = JsonDocument.Parse(body);
+        var root = doc.RootElement;
+        return new FishVoice
+        {
+            Id         = FirstStringProperty(root, "_id", "id") ?? voiceId,
+            Title      = FirstStringProperty(root, "title") ?? title ?? "",
+            State      = FirstStringProperty(root, "state"),
+            Visibility = FirstStringProperty(root, "visibility") ?? visibility,
+        };
+    }
+
+    /// <summary>
+    /// Permanently deletes a voice model (DELETE /model/{id} — confirmed
+    /// live endpoint, see docs.fish.audio "Manage Voices"). Irreversible.
+    /// </summary>
+    public async Task DeleteVoiceAsync(string apiKey, string voiceId, CancellationToken ct = default)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Delete, $"{BaseUrl}/model/{Uri.EscapeDataString(voiceId)}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+        var response = await _http.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(ct);
+            throw BuildApiException(response, body);
+        }
+    }
+
+    private static FishApiException BuildApiException(HttpResponseMessage response, string body)
+    {
+        var status = (int)response.StatusCode;
+        try
+        {
+            var err = JsonSerializer.Deserialize<FishApiError>(body, JsonOpts);
+            return new FishApiException(
+                FishApiException.FriendlyMessage(status, err?.Message ?? err?.Error ?? err?.Detail ?? body), status);
+        }
+        catch
+        {
+            return new FishApiException(FishApiException.FriendlyMessage(status, body), status);
+        }
     }
 
     private static string GuessAudioMimeType(string path) => Path.GetExtension(path).ToLowerInvariant() switch

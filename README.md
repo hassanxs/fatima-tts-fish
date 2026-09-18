@@ -2,6 +2,10 @@
 
 > Windows desktop client for the [Fish.audio](https://fish.audio) TTS API — generate unlimited-length audio, clone voices, and batch process files with full resume support.
 
+[![Download Latest Release](https://img.shields.io/badge/Download-Latest%20Release-8b5cf6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/hassanxs/fatima-tts-fish/releases/latest)
+
+![Fatima TTS (Fish) Screenshot](docs/screenshot.png)
+
 ## Why?
 
 Fish.audio's own tools are built around single generations. Fatima TTS (Fish) adds the workflow layer on top:
@@ -36,7 +40,7 @@ Fish.audio's own tools are built around single generations. Fatima TTS (Fish) ad
 
 ## Installation
 
-Download `FatimaTTSFish-v1.0.0-installer.msi` from the [latest release](https://github.com/hassanxs/fatima-tts-fish/releases/latest) and run it.
+Download the `.msi` installer from the [latest release](https://github.com/hassanxs/fatima-tts-fish/releases/latest) and run it.
 
 The installer will:
 - Install to `C:\Program Files\Fatima TTS (Fish)\`
@@ -76,7 +80,7 @@ dotnet publish FatimaTTSFish/FatimaTTSFish.csproj `
 ### Build the MSI installer
 
 ```powershell
-installer/build-installer.ps1 -Version 1.0.0
+installer/build-installer.ps1 -Version 1.0.2
 ```
 
 Requires the WiX v5 CLI tool (`dotnet tool install --global wix --version 5.*` and `wix extension add -g WixToolset.UI.wixext/5.0.2`).

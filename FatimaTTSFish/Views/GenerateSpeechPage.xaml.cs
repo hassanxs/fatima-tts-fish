@@ -323,8 +323,13 @@ public partial class GenerateSpeechPage : Page
     private void JobTitleBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         if (_suppressTitleAutoSuggest) return;
-        // If user typed manually, stop auto-suggesting
-        _userEditedTitle = true;
+        // If user typed manually, stop auto-suggesting — and clear the stale
+        // auto-suggested flag immediately, since it otherwise only gets
+        // recomputed when the BODY text changes, not the title box itself,
+        // which let an old auto-suggested title win over a real edit at
+        // Generate time.
+        _userEditedTitle       = true;
+        _titleWasAutoSuggested = false;
         JobTitleBox.Foreground = (Brush)FindResource("TextPrimaryBrush");
     }
 

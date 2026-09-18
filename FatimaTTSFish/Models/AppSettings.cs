@@ -19,6 +19,7 @@ public class AppSettings
     public bool AutoPlay { get; set; } = true;
     public bool SaveChunksOnComplete { get; set; } = false;
     public int MaxParallelChunks { get; set; } = 3;               // concurrent chunk syntheses
+    public string DismissedUpdateVersion { get; set; } = "";      // update banner won't re-show for this version
 
     // Editable per-model price per 1,000,000 UTF-8 bytes (USD). Seeded with Fish's published rates.
     public Dictionary<string, double> PricePerMillionBytes { get; set; } = new(DefaultPricePerMillion);

@@ -6,13 +6,16 @@ namespace FatimaTTS.Views;
 
 public partial class MainWindow : Window
 {
-    private readonly ThemeService      _theme;
-    private readonly CredentialService _credentials;
-    private readonly SettingsService   _settingsService;
+    private readonly ThemeService         _theme;
+    private readonly CredentialService    _credentials;
+    private readonly SettingsService      _settingsService;
+    private readonly GitHubUpdateService  _updateService;
 
     // Track which nav accent border is active
     private Border? _activeAccent;
     private Button? _activeNavBtn;
+
+    private UpdateInfo? _pendingUpdate;
 
     public MainWindow()
     {
@@ -21,6 +24,7 @@ public partial class MainWindow : Window
         _theme           = App.Services.GetRequiredService<ThemeService>();
         _credentials     = App.Services.GetRequiredService<CredentialService>();
         _settingsService = App.Services.GetRequiredService<SettingsService>();
+        _updateService   = App.Services.GetRequiredService<GitHubUpdateService>();
 
         Loaded += OnLoaded;
     }
@@ -40,6 +44,87 @@ public partial class MainWindow : Window
 
         // Default page: Generate Speech
         NavigateTo("generate");
+
+        // Silent background update check — never blocks startup, never nags
+        // for a version the user already dismissed.
+        _ = CheckForUpdatesAsync();
+    }
+
+    // ── Update check ─────────────────────────────────────────────────────
+
+    private async Task CheckForUpdatesAsync()
+    {
+        var info = await _updateService.CheckAsync();
+        if (info is null) return;
+
+        var settings = _settingsService.Load();
+        if (settings.DismissedUpdateVersion == info.Version) return;
+
+        _pendingUpdate = info;
+        UpdateBannerText.Text   = $"Fatima TTS (Fish) v{info.Version} is available — you're on v{GitHubUpdateService.CurrentVersion}";
+        UpdateBanner.Visibility = Visibility.Visible;
+    }
+
+    private async void UpdateBannerDownload_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pendingUpdate is null) return;
+
+        if (!_pendingUpdate.IsInstallerAvailable)
+        {
+            // No MSI asset on the release (e.g. CI hasn't had one uploaded yet) —
+            // fall back to sending the user to the releases page rather than
+            // failing silently.
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                    _pendingUpdate.ReleasesUrl) { UseShellExecute = true });
+            }
+            catch { /* browser launch failure is non-fatal */ }
+            return;
+        }
+
+        UpdateBannerActions.Visibility  = Visibility.Collapsed;
+        UpdateBannerProgress.Visibility = Visibility.Visible;
+        UpdateBannerProgress.Value      = 0;
+        UpdateBannerText.Text           = "Downloading update… 0%";
+
+        var progress = new Progress<int>(pct =>
+        {
+            UpdateBannerProgress.Value = pct;
+            UpdateBannerText.Text      = $"Downloading update… {pct}%";
+        });
+
+        try
+        {
+            var msiPath = await _updateService.DownloadInstallerAsync(_pendingUpdate.DownloadUrl, progress);
+
+            UpdateBannerText.Text = "Download complete — launching installer…";
+
+            // Launch the installer (Windows shows the UAC elevation prompt, then
+            // the normal MSI wizard) and close this instance so its files aren't
+            // locked while the installer replaces them.
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(msiPath)
+            { UseShellExecute = true });
+
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            UpdateBannerProgress.Visibility = Visibility.Collapsed;
+            UpdateBannerActions.Visibility  = Visibility.Visible;
+            UpdateBannerText.Text = $"Update download failed: {ex.Message}";
+        }
+    }
+
+    private void UpdateBannerDismiss_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pendingUpdate is not null)
+        {
+            var settings = _settingsService.Load();
+            settings.DismissedUpdateVersion = _pendingUpdate.Version;
+            _settingsService.Save(settings);
+        }
+        UpdateBanner.Visibility = Visibility.Collapsed;
     }
 
     // Force correct TextBox foreground after each page load — WPF bug workaround
